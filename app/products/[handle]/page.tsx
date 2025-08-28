@@ -3,9 +3,9 @@ import { notFound } from "next/navigation";
 import { shopifyProducts } from "@/lib/shopify-api";
 import { Card, CardContent } from "@/components/ui/card";
 import WhatsAppButton from "@/components/WhatsAppButton";
-import ProductGallery from "@/components/ProductGallery";
-import ProductInfo from "@/components/ProductInfo";
-import RelatedProducts from "@/components/RelatedProducts";
+import ProductGallery from "@/components/shop/product/ProductGallery";
+import ProductInfo from "@/components/shop/product/ProductInfo";
+import RelatedProducts from "@/components/shop/product/RelatedProducts";
 
 interface ProductPageProps {
   params: Promise<{ handle: string }>;

@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import ShopContent from "@/components/ShopContent";
+import ShopContent from "@/components/shop/ShopContent";
 import WhatsAppButton from "@/components/WhatsAppButton";
 
 export default function ShopPage() {

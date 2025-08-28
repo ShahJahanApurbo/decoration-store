@@ -1,8 +1,8 @@
 import Link from "next/link";
-import HeroCarousel from "@/components/HeroCarousel";
-import CategorySection from "@/components/CategorySection";
-import FeaturedProducts from "@/components/FeaturedProducts";
-import NewArrivals from "@/components/NewArrivals";
+import HeroCarousel from "@/components/home/HeroCarousel";
+import CategorySection from "@/components/home/CategorySection";
+import FeaturedProducts from "@/components/home/FeaturedProducts";
+import NewArrivals from "@/components/home/NewArrivals";
 import WhatsAppButton, { WhatsAppContact } from "@/components/WhatsAppButton";
 
 export default function Home() {
