@@ -73,6 +73,10 @@ export interface ShopifyProduct {
           currencyCode: string;
         };
         availableForSale: boolean;
+        selectedOptions?: Array<{
+          name: string;
+          value: string;
+        }>;
         image?: {
           id: string;
           url: string;
@@ -91,6 +95,11 @@ export interface ShopifyProduct {
       currencyCode: string;
     };
   };
+  options?: Array<{
+    id: string;
+    name: string;
+    values: string[];
+  }>;
   vendor: string;
   productType: string;
   tags: string[];
