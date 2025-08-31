@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { formatPrice, getOptimizedImageUrl } from "@/lib/shopify";
+import { formatPrice, isOnSale, getDiscountPercentage } from "@/lib/utils";
+import { getOptimizedImageUrl } from "@/lib/hooks/useShopify";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { cn } from "@/lib/utils";
 

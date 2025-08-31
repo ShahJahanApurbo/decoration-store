@@ -1,12 +1,118 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { shopifyCollections } from '@/lib/shopify-api';
+import { shopifyConfig } from '@/lib/shopify';
+
+const COLLECTION_QUERY = `
+  query getCollection($handle: String!, $first: Int!, $after: String) {
+    collection(handle: $handle) {
+      id
+      title
+      handle
+      description
+      updatedAt
+      image {
+        id
+        url
+        altText
+        width
+        height
+      }
+      products(first: $first, after: $after) {
+        edges {
+          node {
+            id
+            title
+            handle
+            description
+            tags
+            vendor
+            productType
+            createdAt
+            updatedAt
+            availableForSale
+            priceRange {
+              minVariantPrice {
+                amount
+                currencyCode
+              }
+              maxVariantPrice {
+                amount
+                currencyCode
+              }
+            }
+            images(first: 3) {
+              edges {
+                node {
+                  id
+                  url
+                  altText
+                  width
+                  height
+                }
+              }
+            }
+            variants(first: 5) {
+              edges {
+                node {
+                  id
+                  title
+                  price {
+                    amount
+                    currencyCode
+                  }
+                  compareAtPrice {
+                    amount
+                    currencyCode
+                  }
+                  availableForSale
+                  selectedOptions {
+                    name
+                    value
+                  }
+                }
+              }
+            }
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
+        }
+      }
+    }
+  }
+`;
+
+async function shopifyFetch(query: string, variables: any = {}) {
+  const response = await fetch(`https://${shopifyConfig.domain}/api/2025-04/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Storefront-Access-Token': shopifyConfig.storefrontAccessToken,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  const result = await response.json();
+  
+  if (result.errors) {
+    throw new Error(result.errors.map((e: any) => e.message).join(', '));
+  }
+
+  return result.data;
+}
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { handle: string } }
+  { params }: { params: Promise<{ handle: string }> }
 ) {
   try {
-    const { handle } = params;
+    const { handle } = await params;
     const { searchParams } = new URL(request.url);
     const first = parseInt(searchParams.get('first') || '20');
     const after = searchParams.get('after') || undefined;
@@ -21,9 +127,9 @@ export async function GET(
       );
     }
 
-    const collection = await shopifyCollections.getByHandle(handle, first, after);
+    const data = await shopifyFetch(COLLECTION_QUERY, { handle, first, after });
 
-    if (!collection) {
+    if (!data.collection) {
       return NextResponse.json(
         {
           success: false,
@@ -35,7 +141,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: collection,
+      data: data.collection,
     });
   } catch (error) {
     console.error('Error fetching collection:', error);

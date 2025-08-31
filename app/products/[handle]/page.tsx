@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { shopifyProducts } from "@/lib/shopify-api";
+import Link from "next/link";
+import { shopifyConfig } from "@/lib/shopify";
 import { Card, CardContent } from "@/components/ui/card";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import ProductGallery from "@/components/shop/product/ProductGallery";
@@ -11,20 +12,35 @@ interface ProductPageProps {
   params: Promise<{ handle: string }>;
 }
 
-// Generate static params for popular products
-export async function generateStaticParams() {
-  try {
-    const products = await shopifyProducts.getAll(20);
-    return products.products.edges.map((edge) => ({
-      handle: edge.node.handle,
-    }));
-  } catch (error) {
-    console.error("Error generating static params:", error);
-    return [];
+// Simple product fetching function
+async function fetchProduct(handle: string) {
+  if (!shopifyConfig.domain || !shopifyConfig.storefrontAccessToken) {
+    throw new Error("Shopify configuration missing");
   }
+
+  // Use our API route
+  const response = await fetch(
+    `${
+      process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+    }/api/products/${handle}`,
+    {
+      // Add cache control for ISR
+      next: { revalidate: 3600 }, // Revalidate every hour
+    }
+  );
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null;
+    }
+    throw new Error("Failed to fetch product");
+  }
+
+  const result = await response.json();
+  return result.success ? result.data : null;
 }
 
-// Enable dynamic params for products not pre-generated
+// Enable dynamic params
 export const dynamicParams = true;
 
 // Generate metadata for SEO
@@ -32,7 +48,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
   const { handle } = await params;
 
   try {
-    const product = await shopifyProducts.getByHandle(handle);
+    const product = await fetchProduct(handle);
 
     if (!product) {
       return {
@@ -41,46 +57,31 @@ export async function generateMetadata({ params }: ProductPageProps) {
       };
     }
 
-    const mainImage = product.images.edges[0]?.node;
-
     return {
       title: `${product.title} | Decoration Store`,
       description:
-        product.description.substring(0, 160) ||
-        `Shop ${product.title} at our decoration store.`,
-      keywords: [
-        product.title,
-        product.productType,
-        product.vendor,
-        ...product.tags,
-      ].join(", "),
+        product.description || `Shop ${product.title} at our decoration store`,
       openGraph: {
         title: product.title,
         description: product.description,
-        images: mainImage
-          ? [
-              {
-                url: mainImage.url,
-                width: mainImage.width,
-                height: mainImage.height,
-                alt: mainImage.altText || product.title,
-              },
-            ]
-          : [],
-        type: "website",
-      },
-      twitter: {
-        card: "summary_large_image",
-        title: product.title,
-        description: product.description,
-        images: mainImage ? [mainImage.url] : [],
+        images:
+          product.images?.edges?.length > 0
+            ? [
+                {
+                  url: product.images.edges[0].node.url,
+                  width: product.images.edges[0].node.width,
+                  height: product.images.edges[0].node.height,
+                  alt: product.images.edges[0].node.altText || product.title,
+                },
+              ]
+            : [],
       },
     };
   } catch (error) {
     console.error("Error generating metadata:", error);
     return {
       title: "Product | Decoration Store",
-      description: "Shop premium decoration items at our store.",
+      description: "Shop our collection of home decoration items",
     };
   }
 }
@@ -89,7 +90,7 @@ async function ProductPage({ params }: ProductPageProps) {
   const { handle } = await params;
 
   try {
-    const product = await shopifyProducts.getByHandle(handle);
+    const product = await fetchProduct(handle);
 
     if (!product) {
       notFound();
@@ -100,13 +101,16 @@ async function ProductPage({ params }: ProductPageProps) {
         <div className="container mx-auto px-4 py-8">
           {/* Breadcrumb */}
           <nav className="flex items-center space-x-2 text-sm text-muted-foreground mb-6">
-            <a href="/" className="hover:text-foreground transition-colors">
+            <Link href="/" className="hover:text-foreground transition-colors">
               Home
-            </a>
+            </Link>
             <span>/</span>
-            <a href="/shop" className="hover:text-foreground transition-colors">
+            <Link
+              href="/shop"
+              className="hover:text-foreground transition-colors"
+            >
               Shop
-            </a>
+            </Link>
             <span>/</span>
             <span className="text-foreground">{product.title}</span>
           </nav>

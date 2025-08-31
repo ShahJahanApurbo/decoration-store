@@ -3,23 +3,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCollections } from "@/lib/hooks/useShopify";
-import { getOptimizedImageUrl } from "@/lib/shopify";
-import { cn } from "@/lib/utils";
 
 export default function CategoryGrid() {
-  const { collections, loading, error } = useCollections();
+  const { data, loading, error } = useCollections();
+
+  const collections = data?.collections || [];
 
   // Use only Shopify collections
   const categories = collections.map((collection) => ({
     id: collection.handle,
     name: collection.title,
-    image: collection.image?.url
-      ? getOptimizedImageUrl(collection.image.url, {
-          width: 400,
-          height: 400,
-        })
-      : null,
-    productsCount: collection.products.edges.length,
+    image: collection.image?.url || null,
+    productsCount: collection.products?.edges?.length || 0,
   }));
 
   // Handle error state

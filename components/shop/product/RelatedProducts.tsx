@@ -3,11 +3,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { formatPrice, isOnSale, getDiscountPercentage } from "@/lib/utils";
-import { shopifyProducts } from "@/lib/shopify-api";
 import { ShopifyProduct } from "@/lib/shopify";
-import { cn } from "@/lib/utils";
 
 interface RelatedProductsProps {
   currentProduct: ShopifyProduct;
@@ -21,13 +18,31 @@ async function RelatedProductsList({
   tags,
 }: RelatedProductsProps) {
   try {
-    // Get products to find related ones
-    const products = await shopifyProducts.getAll(50);
+    // Fetch products using our API route
+    const response = await fetch(
+      `${
+        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+      }/api/products?limit=50`,
+      {
+        next: { revalidate: 3600 }, // Cache for 1 hour
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch products");
+    }
+
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error("API returned error");
+    }
+
+    const products = result.data?.products?.edges || [];
 
     // Filter related products based on product type and tags
-    const relatedProducts = products.products.edges
-      .map((edge) => edge.node)
-      .filter((product) => {
+    const relatedProducts = products
+      .map((edge: { node: ShopifyProduct }) => edge.node)
+      .filter((product: ShopifyProduct) => {
         // Exclude current product
         if (product.id === currentProduct.id) return false;
 
@@ -36,7 +51,9 @@ async function RelatedProductsList({
 
         // Match by tags (if at least one tag matches)
         if (tags && tags.length > 0) {
-          const hasMatchingTag = product.tags.some((tag) => tags.includes(tag));
+          const hasMatchingTag = product.tags.some((tag: string) =>
+            tags.includes(tag)
+          );
           if (hasMatchingTag) return true;
         }
 
@@ -54,7 +71,7 @@ async function RelatedProductsList({
           Related Products
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {relatedProducts.map((product) => (
+          {relatedProducts.map((product: ShopifyProduct) => (
             <RelatedProductCard key={product.id} product={product} />
           ))}
         </div>

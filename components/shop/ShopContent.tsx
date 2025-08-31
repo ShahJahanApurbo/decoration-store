@@ -1,388 +1,261 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, Filter } from "lucide-react";
+import { useState, useMemo } from "react";
 import {
   useProducts,
-  useProductSearch,
   useCollections,
-  useCollection,
+  useProductSearch,
 } from "@/lib/hooks/useShopify";
-import { ProductGrid } from "@/components/shop";
+import ProductGrid from "@/components/shop/ProductGrid";
+import CategoryGrid from "@/components/shop/CategoryGrid";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Search, Filter, X } from "lucide-react";
 
 export default function ShopContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const initialCategory = searchParams.get("category") || "";
-  const initialCollection = searchParams.get("collection") || "";
-  const initialSearch = searchParams.get("search") || "";
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [sortBy, setSortBy] = useState<string>("title");
+  const [showCategories, setShowCategories] = useState(true);
 
-  const [selectedCategory, setSelectedCategory] = useState(
-    initialCategory || initialCollection
-  );
-  const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const [showFilters, setShowFilters] = useState(false);
-
-  // Use search hook when there's a search query, otherwise use regular products
+  // Fetch data
   const {
-    products: searchResults,
-    loading: searchLoading,
-    error: searchError,
-    searchProducts,
-    clearSearch,
-    currentQuery,
-  } = useProductSearch();
-
-  const {
-    products: allProducts,
+    data: productsData,
     loading: productsLoading,
     error: productsError,
-    hasNextPage,
-    loadMore,
-  } = useProducts();
+  } = useProducts(50);
+  const { data: collectionsData, loading: collectionsLoading } =
+    useCollections(20);
+  const { searchProducts, loading: searchLoading } = useProductSearch();
 
-  const {
-    collections,
-    loading: collectionsLoading,
-    error: collectionsError,
-  } = useCollections();
+  // Get products and collections
+  const allProducts = productsData?.products || [];
+  const collections = collectionsData?.collections || [];
 
-  // Hook for getting specific collection products
-  const {
-    collection: selectedCollectionData,
-    loading: collectionLoading,
-    error: collectionError,
-  } = useCollection(selectedCategory, 50);
+  // Filter and sort products
+  const filteredProducts = useMemo(() => {
+    let filtered = allProducts;
 
-  // Determine which data to show
-  const isSearchMode = !!searchQuery;
-  const isCollectionMode =
-    !isSearchMode &&
-    selectedCategory &&
-    collections.some((c) => c.handle === selectedCategory);
-
-  let products: any[] = [];
-  let loading = false;
-  let error: string | null = null;
-
-  if (isSearchMode) {
-    products = searchResults;
-    loading = searchLoading;
-    error = searchError;
-  } else if (isCollectionMode && selectedCollectionData) {
-    // Show products from the selected collection
-    products = selectedCollectionData.products.edges.map((edge) => edge.node);
-    loading = collectionLoading;
-    error = collectionError;
-  } else {
-    // Show all products
-    products = allProducts;
-    loading = productsLoading;
-    error = productsError;
-  }
-
-  // Handle search
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    if (query.trim()) {
-      searchProducts(query);
-      // Update URL with search parameter
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set("search", query);
-      if (selectedCategory) newParams.set("category", selectedCategory);
-      router.replace(`/shop?${newParams.toString()}`);
-    } else {
-      clearSearch();
-      // Remove search parameter from URL
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete("search");
-      if (selectedCategory) newParams.set("category", selectedCategory);
-      const queryString = newParams.toString();
-      router.replace(`/shop${queryString ? `?${queryString}` : ""}`);
-    }
-  };
-
-  // Handle category selection
-  const handleCategorySelect = (categoryId: string) => {
-    setSelectedCategory(categoryId);
-    // Update URL with category or collection parameter
-    const newParams = new URLSearchParams(searchParams);
-
-    // Clear both category and collection params first
-    newParams.delete("category");
-    newParams.delete("collection");
-
-    if (categoryId) {
-      // Check if this is a collection handle or a regular category
-      const isCollection = collections.some(
-        (collection) => collection.handle === categoryId
+    // Apply category filter
+    if (selectedCategory) {
+      filtered = filtered.filter(
+        (product: any) =>
+          product.productType === selectedCategory ||
+          product.tags?.includes(selectedCategory)
       );
-      if (isCollection) {
-        newParams.set("collection", categoryId);
-      } else {
-        newParams.set("category", categoryId);
-      }
     }
 
-    if (searchQuery) newParams.set("search", searchQuery);
-    const queryString = newParams.toString();
-    router.replace(`/shop${queryString ? `?${queryString}` : ""}`);
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (product: any) =>
+          product.title.toLowerCase().includes(query) ||
+          product.description?.toLowerCase().includes(query) ||
+          product.vendor?.toLowerCase().includes(query) ||
+          product.productType?.toLowerCase().includes(query) ||
+          product.tags?.some((tag: string) => tag.toLowerCase().includes(query))
+      );
+    }
+
+    // Sort products
+    filtered = [...filtered].sort((a: any, b: any) => {
+      switch (sortBy) {
+        case "title":
+          return a.title.localeCompare(b.title);
+        case "price-low":
+          return (
+            parseFloat(a.priceRange.minVariantPrice.amount) -
+            parseFloat(b.priceRange.minVariantPrice.amount)
+          );
+        case "price-high":
+          return (
+            parseFloat(b.priceRange.minVariantPrice.amount) -
+            parseFloat(a.priceRange.minVariantPrice.amount)
+          );
+        case "newest":
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        case "oldest":
+          return (
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [allProducts, selectedCategory, searchQuery, sortBy]);
+
+  // Get unique categories from products
+  const categories = useMemo(() => {
+    const categorySet = new Set<string>();
+    allProducts.forEach((product: any) => {
+      if (product.productType) categorySet.add(product.productType);
+    });
+    return Array.from(categorySet).sort();
+  }, [allProducts]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Search is handled by the useMemo filter above
   };
 
-  // Filter products by category (only for non-collection filtering)
-  const filteredProducts =
-    selectedCategory && !isCollectionMode
-      ? products.filter((product) => {
-          // Check product type and tags for regular category filtering
-          const matchesProductType =
-            product.productType?.toLowerCase() ===
-            selectedCategory.toLowerCase();
-          const matchesTags = product.tags?.some(
-            (tag: string) =>
-              tag.toLowerCase() === selectedCategory.toLowerCase()
-          );
+  const clearFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory("");
+    setSortBy("title");
+  };
 
-          return matchesProductType || matchesTags;
-        })
-      : products;
-
-  // Get categories from collections with product counts
-  const categories = collections.map((collection) => ({
-    id: collection.handle,
-    name: collection.title,
-    count: collection.products.edges.length,
-    description: collection.description || undefined,
-  }));
-
-  useEffect(() => {
-    if (initialSearch) {
-      handleSearch(initialSearch);
-    }
-  }, [initialSearch]);
-
-  if (error && !products.length) {
-    return (
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Shop</h1>
-          <p className="text-red-600 mb-8">
-            {error.includes("not configured")
-              ? "Store configuration needed. Please set up your Shopify credentials."
-              : "Unable to load products. Please try again later."}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const isLoading = productsLoading || collectionsLoading || searchLoading;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Shop</h1>
-        <p className="text-gray-600">
-          Discover our complete collection of home decoration items
-        </p>
-      </div>
-
-      {/* Search Bar */}
-      <div className="mb-6">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            type="text"
-            placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="pl-10"
-          />
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-foreground mb-4">Shop</h1>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Discover our complete collection of home decoration items
+          </p>
         </div>
-      </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar */}
-        <div className="lg:w-64 space-y-6">
-          {/* Mobile Filter Toggle */}
-          <div className="lg:hidden">
+        {/* Categories Toggle */}
+        <div className="flex justify-center mb-8">
+          <div className="flex space-x-2">
             <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="w-full"
+              variant={showCategories ? "default" : "outline"}
+              onClick={() => setShowCategories(true)}
             >
-              <Filter className="h-4 w-4 mr-2" />
-              {showFilters ? "Hide" : "Show"} Filters
+              Categories
+            </Button>
+            <Button
+              variant={!showCategories ? "default" : "outline"}
+              onClick={() => setShowCategories(false)}
+            >
+              All Products
             </Button>
           </div>
+        </div>
 
-          <div
-            className={`space-y-6 ${showFilters ? "block" : "hidden lg:block"}`}
-          >
-            {/* Categories */}
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-3">Categories</h3>
-              {collectionsLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-8 bg-gray-200 rounded animate-pulse"
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Button
-                    variant={!selectedCategory ? "default" : "ghost"}
-                    className="w-full justify-between"
-                    onClick={() => handleCategorySelect("")}
-                  >
-                    All Products
-                    <span className="text-sm text-gray-500">
-                      {allProducts.length}
-                    </span>
-                  </Button>
-                  {categories.map((category) => (
-                    <Button
-                      key={category.id}
-                      variant={
-                        selectedCategory === category.id ? "default" : "ghost"
-                      }
-                      className="w-full justify-between"
-                      onClick={() => handleCategorySelect(category.id)}
-                      title={category.description}
-                    >
-                      <span className="truncate">{category.name}</span>
-                      <span className="text-sm text-gray-500 ml-2">
-                        {category.count}
-                      </span>
-                    </Button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Search Results Info */}
-            {isSearchMode && currentQuery && (
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  {searchResults.length} results for "{currentQuery}"
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSearchQuery("");
-                    clearSearch();
-                  }}
-                  className="mt-2"
-                >
-                  Clear Search
-                </Button>
-              </div>
-            )}
+        {/* Show Categories */}
+        {showCategories && (
+          <div className="mb-12">
+            <CategoryGrid />
           </div>
-        </div>
+        )}
 
-        {/* Main Content */}
-        <div className="flex-1">
-          {/* No Products Found */}
-          {!loading && filteredProducts.length === 0 && (
-            <div className="text-center py-16">
-              <div className="max-w-md mx-auto">
-                <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                  <Search className="w-12 h-12 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {isSearchMode
-                    ? `No products found for "${currentQuery}"`
-                    : selectedCategory
-                    ? `No products found in ${selectedCategory} category`
-                    : "No products available"}
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  We couldn't find any products matching your criteria. Try
-                  adjusting your filters or search terms.
-                </p>
-                {(isSearchMode || selectedCategory) && (
-                  <div className="space-x-4">
-                    {isSearchMode && (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setSearchQuery("");
-                          clearSearch();
-                        }}
-                      >
-                        Clear Search
-                      </Button>
-                    )}
-                    {selectedCategory && (
-                      <Button
-                        variant="outline"
-                        onClick={() => handleCategorySelect("")}
-                      >
-                        View All Products
-                      </Button>
-                    )}
-                  </div>
-                )}
+        {/* Filters and Search */}
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              {/* Search */}
+              <div className="md:col-span-2">
+                <form onSubmit={handleSearch} className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </form>
+              </div>
+
+              {/* Category Filter */}
+              <div>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full p-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">All Categories</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-          )}
 
-          {/* Products Grid */}
-          {filteredProducts.length > 0 && (
-            <ProductGrid
-              products={filteredProducts}
-              loading={loading}
-              loadingCount={8}
-              columns={{
-                mobile: 1,
-                tablet: 2,
-                desktop: 4,
-              }}
-              variant="default"
-              showQuickView={true}
-            />
-          )}
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-2">Sort by:</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full md:w-auto p-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="title">Name</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+            </div>
 
-          {/* Loading State */}
-          {loading && (
-            <ProductGrid
-              products={[]}
-              loading={true}
-              loadingCount={8}
-              columns={{
-                mobile: 1,
-                tablet: 2,
-                desktop: 4,
-              }}
-              variant="default"
-              showQuickView={true}
-            />
-          )}
-
-          {/* Load More Button - only show for regular product browsing */}
-          {!isSearchMode &&
-            !isCollectionMode &&
-            hasNextPage &&
-            filteredProducts.length > 0 && (
-              <div className="text-center mt-12">
+            {/* Active Filters */}
+            {(searchQuery || selectedCategory) && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {searchQuery && (
+                  <Badge
+                    variant="secondary"
+                    className="flex items-center gap-1"
+                  >
+                    Search: "{searchQuery}"
+                    <X
+                      className="h-3 w-3 cursor-pointer"
+                      onClick={() => setSearchQuery("")}
+                    />
+                  </Badge>
+                )}
+                {selectedCategory && (
+                  <Badge
+                    variant="secondary"
+                    className="flex items-center gap-1"
+                  >
+                    Category: {selectedCategory}
+                    <X
+                      className="h-3 w-3 cursor-pointer"
+                      onClick={() => setSelectedCategory("")}
+                    />
+                  </Badge>
+                )}
                 <Button
-                  onClick={loadMore}
-                  disabled={loading}
-                  variant="outline"
-                  size="lg"
-                  className="px-8 py-3 text-base font-medium"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="h-6 px-2 text-xs"
                 >
-                  {loading ? "Loading..." : "Load More Products"}
+                  Clear All
                 </Button>
               </div>
             )}
-        </div>
+          </CardContent>
+        </Card>
+
+        {/* Results */}
+        {!showCategories && (
+          <div className="mb-6">
+            <p className="text-muted-foreground">
+              {isLoading
+                ? "Loading products..."
+                : `${filteredProducts.length} product${
+                    filteredProducts.length !== 1 ? "s" : ""
+                  } found`}
+            </p>
+          </div>
+        )}
+
+        {/* Product Grid */}
+        {!showCategories && (
+          <ProductGrid products={filteredProducts} loading={isLoading} />
+        )}
       </div>
     </div>
   );

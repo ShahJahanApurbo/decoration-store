@@ -1,147 +1,124 @@
-import Image from "next/image";
+"use client";
+
+import { useProducts } from "@/lib/hooks/useShopify";
+import ProductCard from "@/components/shop/ProductCard";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Star, Heart } from "lucide-react";
-import WhatsAppButton from "@/components/WhatsAppButton";
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  rating: number;
-  reviews: number;
-  isNew?: boolean;
-  discount?: number;
-}
-
-const newArrivals: Product[] = [
-  {
-    id: "5",
-    name: "Vintage Brass Wall Clock",
-    price: 89.99,
-    originalPrice: 119.99,
-    image:
-      "https://images.unsplash.com/photo-1563861826100-9cb868fdbe1c?auto=format&fit=crop&w=400&q=60",
-    rating: 4.5,
-    reviews: 92,
-    discount: 25,
-  },
-  {
-    id: "6",
-    name: "Ceramic Table Vase Set",
-    price: 159.99,
-    image:
-      "https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=400&q=60",
-    rating: 4.8,
-    reviews: 147,
-    isNew: true,
-  },
-  {
-    id: "7",
-    name: "Woven Pendant Light",
-    price: 179.99,
-    originalPrice: 229.99,
-    image:
-      "https://images.unsplash.com/photo-1524634126442-357e0eac3c14?auto=format&fit=crop&w=400&q=60",
-    rating: 4.7,
-    reviews: 73,
-    discount: 22,
-  },
-  {
-    id: "8",
-    name: "Modern Canvas Art Print",
-    price: 79.99,
-    image:
-      "https://images.unsplash.com/photo-1541961017774-22349e4a1262?auto=format&fit=crop&w=400&q=60",
-    rating: 4.6,
-    reviews: 184,
-    isNew: true,
-  },
-];
+import Link from "next/link";
+import { useMemo } from "react";
 
 export default function NewArrivals() {
+  const { data, loading, error } = useProducts(50); // Get more products to filter from
+
+  // Filter products to show only recent arrivals
+  const newProducts = useMemo(() => {
+    if (!data?.products) return [];
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    return data.products
+      .filter((product: any) => {
+        // Filter by creation date (within last 30 days)
+        const createdAt = new Date(product.createdAt);
+        const isRecent = createdAt > thirtyDaysAgo;
+
+        // Also check for "new" tag
+        const hasNewTag = product.tags?.some(
+          (tag: string) =>
+            tag.toLowerCase().includes("new") ||
+            tag.toLowerCase().includes("arrival") ||
+            tag.toLowerCase().includes("latest")
+        );
+
+        return isRecent || hasNewTag;
+      })
+      .slice(0, 8); // Limit to 8 products
+  }, [data]);
+
+  if (loading) {
+    return (
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              New Arrivals
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Discover our latest collection of decoration items
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, index) => (
+              <div key={index} className="space-y-4">
+                <div className="aspect-square bg-muted animate-pulse rounded-lg"></div>
+                <div className="h-4 bg-muted animate-pulse rounded"></div>
+                <div className="h-4 bg-muted animate-pulse rounded w-2/3"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              New Arrivals
+            </h2>
+            <p className="text-muted-foreground">
+              Unable to load new arrivals at this time.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (newProducts.length === 0) {
+    return (
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              New Arrivals
+            </h2>
+            <p className="text-muted-foreground">
+              No new arrivals available at this time.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="space-y-6">
-      <header className="flex items-end justify-between">
-        <div>
-          <h3 className="text-2xl font-semibold">New Arrivals</h3>
-          <p className="text-muted-foreground">
-            Latest decoration pieces added to our collection.
+    <section className="py-16 bg-white">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-foreground mb-4">
+            New Arrivals
+          </h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Discover our latest collection of carefully curated decoration items
           </p>
         </div>
-        <Button variant="outline" size="sm">
-          View all new items
-        </Button>
-      </header>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {newArrivals.map((product) => (
-          <Card
-            key={product.id}
-            className="group cursor-pointer overflow-hidden border-0 shadow-sm hover:shadow-md transition-all"
-          >
-            <div className="relative aspect-square overflow-hidden">
-              <Image
-                src={product.image}
-                alt={product.name}
-                fill
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              {(product.isNew || product.discount) && (
-                <div className="absolute top-2 left-2 z-10">
-                  {product.isNew && (
-                    <Badge className="bg-green-600 hover:bg-green-700">
-                      New
-                    </Badge>
-                  )}
-                  {product.discount && (
-                    <Badge variant="destructive">-{product.discount}%</Badge>
-                  )}
-                </div>
-              )}
-              <Button
-                size="sm"
-                variant="secondary"
-                className="absolute top-2 right-2 z-10 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Heart className="h-4 w-4" />
-              </Button>
-            </div>
-            <CardContent className="p-4 space-y-2">
-              <h4 className="font-medium text-sm leading-tight line-clamp-2">
-                {product.name}
-              </h4>
-              <div className="flex items-center gap-1 text-xs">
-                <div className="flex items-center">
-                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                  <span className="ml-1 font-medium">{product.rating}</span>
-                </div>
-                <span className="text-muted-foreground">
-                  ({product.reviews})
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">${product.price}</span>
-                {product.originalPrice && (
-                  <span className="text-xs text-muted-foreground line-through">
-                    ${product.originalPrice}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                <WhatsAppButton
-                  productName={product.name}
-                  productPrice={product.price}
-                  productImage={product.image}
-                  size="sm"
-                  className="w-full"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          {newProducts.map((product: any) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+
+        <div className="text-center">
+          <Button asChild variant="outline" size="lg">
+            <Link href="/shop">Explore All Products</Link>
+          </Button>
+        </div>
       </div>
     </section>
   );

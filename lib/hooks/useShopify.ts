@@ -1,115 +1,203 @@
-import { useState, useEffect } from 'react';
-import { shopifyProducts, shopifyCollections, shopifyUtils } from '@/lib/shopify-api';
-import type { ShopifyProduct, ShopifyCollection } from '@/lib/shopify';
+'use client';
 
-// Hook for fetching products
-export function useProducts(first: number = 20) {
-  const [products, setProducts] = useState<ShopifyProduct[]>([]);
+import { useState, useEffect } from 'react';
+
+interface Product {
+  id: string;
+  title: string;
+  handle: string;
+  description: string;
+  tags: string[];
+  vendor: string;
+  productType: string;
+  createdAt: string;
+  updatedAt: string;
+  availableForSale: boolean;
+  priceRange: {
+    minVariantPrice: {
+      amount: string;
+      currencyCode: string;
+    };
+    maxVariantPrice: {
+      amount: string;
+      currencyCode: string;
+    };
+  };
+  images: {
+    edges: Array<{
+      node: {
+        id: string;
+        url: string;
+        altText?: string;
+        width: number;
+        height: number;
+      };
+    }>;
+  };
+  variants: {
+    edges: Array<{
+      node: {
+        id: string;
+        title: string;
+        price: {
+          amount: string;
+          currencyCode: string;
+        };
+        compareAtPrice?: {
+          amount: string;
+          currencyCode: string;
+        };
+        availableForSale: boolean;
+        selectedOptions: Array<{
+          name: string;
+          value: string;
+        }>;
+      };
+    }>;
+  };
+}
+
+interface Collection {
+  id: string;
+  title: string;
+  handle: string;
+  description: string;
+  updatedAt: string;
+  image?: {
+    id: string;
+    url: string;
+    altText?: string;
+    width: number;
+    height: number;
+  };
+  products: {
+    edges: Array<{
+      node: Product;
+    }>;
+  };
+}
+
+interface UseDataResult<T> {
+  data: T | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
+}
+
+// Hook for fetching featured products
+export function useFeaturedProducts(count: number = 8): UseDataResult<Product[]> {
+  const [data, setData] = useState<Product[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasNextPage, setHasNextPage] = useState(false);
-  const [endCursor, setEndCursor] = useState<string | null>(null);
 
-  const fetchProducts = async (after?: string) => {
+  const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await shopifyProducts.getAll(first, after);
+      const response = await fetch(`/api/products/featured?first=${count}`);
+      const result = await response.json();
       
-      if (after) {
-        // Load more products (append to existing)
-        setProducts(prev => [...prev, ...response.products.edges.map(edge => edge.node)]);
+      if (result.success) {
+        setData(result.data);
       } else {
-        // Initial load or refresh
-        setProducts(response.products.edges.map(edge => edge.node));
+        setError(result.error || 'Failed to fetch featured products');
       }
-      
-      setHasNextPage(response.products.pageInfo.hasNextPage);
-      setEndCursor(response.products.pageInfo.endCursor);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch products');
-      console.error('Error fetching products:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch featured products');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadMore = () => {
-    if (hasNextPage && endCursor && !loading) {
-      fetchProducts(endCursor);
-    }
-  };
-
   useEffect(() => {
-    if (shopifyUtils.isConfigured()) {
-      fetchProducts();
-    } else {
-      setError('Shopify is not configured');
-      setLoading(false);
-    }
-  }, [first]);
+    fetchData();
+  }, [count]);
 
-  return {
-    products,
-    loading,
-    error,
-    hasNextPage,
-    loadMore,
-    refetch: () => fetchProducts(),
-  };
+  return { data, loading, error, refetch: fetchData };
 }
 
-// Hook for fetching a single product
-export function useProduct(handle: string) {
-  const [product, setProduct] = useState<ShopifyProduct | null>(null);
+// Hook for fetching all products
+export function useProducts(count: number = 20): UseDataResult<{ products: Product[]; hasNextPage: boolean }> {
+  const [data, setData] = useState<{ products: Product[]; hasNextPage: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!handle) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchProduct = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const productData = await shopifyProducts.getByHandle(handle);
-        setProduct(productData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch product');
-        console.error('Error fetching product:', err);
-      } finally {
-        setLoading(false);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/products?first=${count}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setData({
+          products: result.data.edges.map((edge: any) => edge.node),
+          hasNextPage: result.data.pageInfo.hasNextPage,
+        });
+      } else {
+        setError(result.error || 'Failed to fetch products');
       }
-    };
-
-    if (shopifyUtils.isConfigured()) {
-      fetchProduct();
-    } else {
-      setError('Shopify is not configured');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch products');
+    } finally {
       setLoading(false);
     }
-  }, [handle]);
+  };
 
-  return { product, loading, error };
+  useEffect(() => {
+    fetchData();
+  }, [count]);
+
+  return { data, loading, error, refetch: fetchData };
+}
+
+// Hook for fetching collections
+export function useCollections(count: number = 20): UseDataResult<{ collections: Collection[]; hasNextPage: boolean }> {
+  const [data, setData] = useState<{ collections: Collection[]; hasNextPage: boolean } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/collections?first=${count}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setData({
+          collections: result.data.edges.map((edge: any) => edge.node),
+          hasNextPage: result.data.pageInfo.hasNextPage,
+        });
+      } else {
+        setError(result.error || 'Failed to fetch collections');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch collections');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [count]);
+
+  return { data, loading, error, refetch: fetchData };
 }
 
 // Hook for searching products
 export function useProductSearch() {
-  const [products, setProducts] = useState<ShopifyProduct[]>([]);
+  const [data, setData] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasNextPage, setHasNextPage] = useState(false);
-  const [endCursor, setEndCursor] = useState<string | null>(null);
-  const [currentQuery, setCurrentQuery] = useState('');
 
-  const searchProducts = async (query: string, first: number = 20, after?: string) => {
+  const searchProducts = async (query: string, count: number = 20) => {
     if (!query.trim()) {
-      setProducts([]);
+      setData([]);
       return;
     }
 
@@ -117,217 +205,45 @@ export function useProductSearch() {
       setLoading(true);
       setError(null);
       
-      if (query !== currentQuery) {
-        setCurrentQuery(query);
-      }
+      const response = await fetch(`/api/products?query=${encodeURIComponent(query)}&first=${count}`);
+      const result = await response.json();
       
-      const response = await shopifyProducts.search(query, first, after);
-      
-      if (after && query === currentQuery) {
-        // Load more results for the same query
-        setProducts(prev => [...prev, ...response.products.edges.map(edge => edge.node)]);
+      if (result.success) {
+        setData(result.data.edges.map((edge: any) => edge.node));
       } else {
-        // New search or initial load
-        setProducts(response.products.edges.map(edge => edge.node));
+        setError(result.error || 'Failed to search products');
       }
-      
-      setHasNextPage(response.products.pageInfo.hasNextPage);
-      setEndCursor(response.products.pageInfo.endCursor);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to search products');
-      console.error('Error searching products:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadMore = () => {
-    if (hasNextPage && endCursor && currentQuery && !loading) {
-      searchProducts(currentQuery, 20, endCursor);
     }
   };
 
   const clearSearch = () => {
-    setProducts([]);
-    setCurrentQuery('');
+    setData([]);
     setError(null);
-    setHasNextPage(false);
-    setEndCursor(null);
   };
 
-  return {
-    products,
-    loading,
-    error,
-    hasNextPage,
-    currentQuery,
-    searchProducts,
-    loadMore,
-    clearSearch,
-  };
+  return { data, loading, error, searchProducts, clearSearch };
 }
 
-// Hook for fetching featured products
-export function useFeaturedProducts(first: number = 8) {
-  const [products, setProducts] = useState<ShopifyProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchFeaturedProducts = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const productsData = await shopifyProducts.getFeatured(first);
-        setProducts(productsData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch featured products');
-        console.error('Error fetching featured products:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (shopifyUtils.isConfigured()) {
-      fetchFeaturedProducts();
-    } else {
-      setError('Shopify is not configured');
-      setLoading(false);
-    }
-  }, [first]);
-
-  return { products, loading, error };
+// Utility functions
+export function formatPrice(amount: string, currencyCode: string = 'USD'): string {
+  const numericAmount = parseFloat(amount);
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currencyCode,
+  }).format(numericAmount);
 }
 
-// Hook for fetching collections
-export function useCollections(first: number = 20) {
-  const [collections, setCollections] = useState<ShopifyCollection[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [hasNextPage, setHasNextPage] = useState(false);
-  const [endCursor, setEndCursor] = useState<string | null>(null);
-
-  const fetchCollections = async (after?: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await shopifyCollections.getAll(first, after);
-      
-      if (after) {
-        setCollections(prev => [...prev, ...response.collections.edges.map(edge => edge.node)]);
-      } else {
-        setCollections(response.collections.edges.map(edge => edge.node));
-      }
-      
-      setHasNextPage(response.collections.pageInfo.hasNextPage);
-      setEndCursor(response.collections.pageInfo.endCursor);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch collections');
-      console.error('Error fetching collections:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadMore = () => {
-    if (hasNextPage && endCursor && !loading) {
-      fetchCollections(endCursor);
-    }
-  };
-
-  useEffect(() => {
-    if (shopifyUtils.isConfigured()) {
-      fetchCollections();
-    } else {
-      setError('Shopify is not configured');
-      setLoading(false);
-    }
-  }, [first]);
-
-  return {
-    collections,
-    loading,
-    error,
-    hasNextPage,
-    loadMore,
-    refetch: () => fetchCollections(),
-  };
-}
-
-// Hook for fetching a single collection
-export function useCollection(handle: string, first: number = 20) {
-  const [collection, setCollection] = useState<ShopifyCollection | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!handle) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchCollection = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const collectionData = await shopifyCollections.getByHandle(handle, first);
-        setCollection(collectionData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch collection');
-        console.error('Error fetching collection:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (shopifyUtils.isConfigured()) {
-      fetchCollection();
-    } else {
-      setError('Shopify is not configured');
-      setLoading(false);
-    }
-  }, [handle, first]);
-
-  return { collection, loading, error };
-}
-
-// Hook for product recommendations
-export function useProductRecommendations(productId: string) {
-  const [recommendations, setRecommendations] = useState<ShopifyProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!productId) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchRecommendations = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const recommendationsData = await shopifyProducts.getRecommendations(productId);
-        setRecommendations(recommendationsData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch recommendations');
-        console.error('Error fetching recommendations:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (shopifyUtils.isConfigured()) {
-      fetchRecommendations();
-    } else {
-      setError('Shopify is not configured');
-      setLoading(false);
-    }
-  }, [productId]);
-
-  return { recommendations, loading, error };
+export function getOptimizedImageUrl(url: string, options: { width?: number; height?: number } = {}): string {
+  if (!url) return '/placeholder-image.jpg';
+  
+  const { width = 400, height = 400 } = options;
+  const urlObj = new URL(url);
+  urlObj.searchParams.set('width', width.toString());
+  urlObj.searchParams.set('height', height.toString());
+  
+  return urlObj.toString();
 }
