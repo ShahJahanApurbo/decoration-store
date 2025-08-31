@@ -168,7 +168,7 @@ NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN=your_storefront_token
 SHOPIFY_ADMIN_ACCESS_TOKEN=your_admin_token
 
 # Optional - API Configuration
-NEXT_PUBLIC_SHOPIFY_API_VERSION=2025-01
+NEXT_PUBLIC_SHOPIFY_API_VERSION=2025-04
 
 # Optional - Shopify App Development
 SHOPIFY_API_KEY=your_api_key

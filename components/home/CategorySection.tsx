@@ -21,7 +21,6 @@ export default function CategorySection() {
               Explore our wide range of decoration categories
             </p>
           </div>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[...Array(6)].map((_, index) => (
               <div key={index} className="space-y-4">
@@ -83,7 +82,6 @@ export default function CategorySection() {
             Explore our curated collection of home decoration categories
           </p>
         </div>
-        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
           {collections.map((collection: any) => (
             <Link
@@ -108,7 +106,6 @@ export default function CategorySection() {
                     </div>
                   </div>
                 )}
-                
                 {/* Overlay */}
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                   <Button variant="secondary" size="sm">
@@ -116,7 +113,6 @@ export default function CategorySection() {
                   </Button>
                 </div>
               </div>
-              
               <div className="space-y-2">
                 <h3 className="font-semibold text-lg text-gray-900 group-hover:text-primary transition-colors">
                   {collection.title}

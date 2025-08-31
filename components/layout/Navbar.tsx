@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { MapPin } from "lucide-react";
 
 export default function Navbar() {
   return (
@@ -34,6 +35,16 @@ export default function Navbar() {
               className="text-sm font-medium transition-colors hover:text-primary"
             >
               Contact
+            </Link>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <Link
+              href="/location"
+              className="flex items-center justify-center p-2 rounded-md transition-colors hover:bg-accent hover:text-accent-foreground"
+              title="View our location"
+            >
+              <MapPin className="h-5 w-5" />
             </Link>
           </div>
         </div>

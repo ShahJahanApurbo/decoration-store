@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { shopifyConfig } from '@/lib/shopify';
+import { shopifyConfig, getStorefrontApiUrl } from '@/lib/shopify';
 
 const FEATURED_PRODUCTS_QUERY = `
   query getFeaturedProducts($first: Int!) {
@@ -65,7 +65,7 @@ const FEATURED_PRODUCTS_QUERY = `
 `;
 
 async function shopifyFetch(query: string, variables: any = {}) {
-  const response = await fetch(`https://${shopifyConfig.domain}/api/2025-04/graphql.json`, {
+  const response = await fetch(getStorefrontApiUrl(), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

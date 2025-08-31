@@ -5,6 +5,11 @@ export const shopifyConfig = {
   apiVersion: process.env.NEXT_PUBLIC_SHOPIFY_API_VERSION || '2025-04',
 };
 
+// Helper function to get the Storefront API URL
+export const getStorefrontApiUrl = () => {
+  return `https://${shopifyConfig.domain}/api/${shopifyConfig.apiVersion}/graphql.json`;
+};
+
 // Validate configuration
 if (!shopifyConfig.domain) {
   throw new Error('Missing NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN environment variable');

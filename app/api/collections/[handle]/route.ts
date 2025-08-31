@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { shopifyConfig } from '@/lib/shopify';
+import { shopifyConfig, getStorefrontApiUrl } from '@/lib/shopify';
 
 const COLLECTION_QUERY = `
   query getCollection($handle: String!, $first: Int!, $after: String) {
@@ -85,7 +85,7 @@ const COLLECTION_QUERY = `
 `;
 
 async function shopifyFetch(query: string, variables: any = {}) {
-  const response = await fetch(`https://${shopifyConfig.domain}/api/2025-04/graphql.json`, {
+  const response = await fetch(getStorefrontApiUrl(), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
