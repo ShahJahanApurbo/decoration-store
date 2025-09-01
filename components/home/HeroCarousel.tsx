@@ -1,15 +1,15 @@
 "use client";
 import * as React from "react";
 import Image from "next/image";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
-import Autoplay from "embla-carousel-autoplay";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation, Pagination, Autoplay, EffectFade } from "swiper/modules";
+
+// Import Swiper styles
+import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
+import "swiper/css/effect-fade";
 
 interface Slide {
   id: number;
@@ -51,21 +51,37 @@ const slides: Slide[] = [
 ];
 
 export default function HeroCarousel() {
-  const plugin = React.useRef(
-    Autoplay({ delay: 5000, stopOnInteraction: true })
-  );
-
   return (
-    <Carousel
-      plugins={[plugin.current]}
-      className="w-full"
-      onMouseEnter={plugin.current.stop}
-      onMouseLeave={plugin.current.reset}
-    >
-      <CarouselContent>
+    <div className="w-full">
+      <Swiper
+        modules={[Navigation, Pagination, Autoplay, EffectFade]}
+        spaceBetween={0}
+        slidesPerView={1}
+        loop={true}
+        autoplay={{
+          delay: 5000,
+          disableOnInteraction: false,
+          pauseOnMouseEnter: true,
+        }}
+        speed={800}
+        effect="fade"
+        fadeEffect={{
+          crossFade: true,
+        }}
+        pagination={{
+          clickable: true,
+          bulletClass: "swiper-pagination-bullet",
+          bulletActiveClass: "swiper-pagination-bullet-active",
+        }}
+        navigation={{
+          nextEl: ".hero-carousel-next",
+          prevEl: ".hero-carousel-prev",
+        }}
+        className="w-full h-[420px] md:h-[520px] rounded-xl overflow-hidden"
+      >
         {slides.map((slide) => (
-          <CarouselItem key={slide.id}>
-            <div className="relative w-full h-[420px] md:h-[520px] overflow-hidden rounded-xl bg-neutral-900 text-white">
+          <SwiperSlide key={slide.id}>
+            <div className="relative w-full h-full bg-neutral-900 text-white">
               <Image
                 src={slide.image}
                 alt={slide.title}
@@ -94,11 +110,66 @@ export default function HeroCarousel() {
                 )}
               </div>
             </div>
-          </CarouselItem>
+          </SwiperSlide>
         ))}
-      </CarouselContent>
-      <CarouselPrevious className="left-4" />
-      <CarouselNext className="right-4" />
-    </Carousel>
+
+        {/* Custom Navigation Buttons */}
+        <div className="hero-carousel-prev absolute left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 backdrop-blur-sm">
+          <svg
+            className="w-5 h-5 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </div>
+
+        <div className="hero-carousel-next absolute right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 backdrop-blur-sm">
+          <svg
+            className="w-5 h-5 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </div>
+      </Swiper>
+
+      <style jsx global>{`
+        .swiper-pagination {
+          bottom: 20px !important;
+        }
+
+        .swiper-pagination-bullet {
+          width: 12px;
+          height: 12px;
+          background: rgba(255, 255, 255, 0.5);
+          opacity: 1;
+          margin: 0 6px;
+          transition: all 0.3s ease;
+        }
+
+        .swiper-pagination-bullet-active {
+          background: white;
+          transform: scale(1.2);
+        }
+
+        .swiper-pagination-bullet:hover {
+          background: rgba(255, 255, 255, 0.8);
+        }
+      `}</style>
+    </div>
   );
 }
