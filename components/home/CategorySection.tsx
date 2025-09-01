@@ -2,139 +2,108 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { useState, useMemo } from "react";
 import { useCollections } from "@/lib/hooks/useShopify";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import { cn } from "@/lib/utils";
 
 export default function CategorySection() {
   const { data, loading, error } = useCollections(6);
 
-  if (loading) {
-    return (
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Shop by Category
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Explore our wide range of decoration categories
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[...Array(6)].map((_, index) => (
-              <div key={index} className="space-y-4">
-                <div className="aspect-square bg-gray-200 animate-pulse rounded-lg"></div>
-                <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
-                <div className="h-4 bg-gray-200 animate-pulse rounded w-3/4"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    );
-  }
+  const collections = data?.collections || [];
+  const [activeId, setActiveId] = useState<string>("");
 
-  if (error) {
-    return (
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Shop by Category
-            </h2>
-            <p className="text-gray-600">
-              Unable to load categories at this time.
-            </p>
-          </div>
-        </div>
-      </section>
-    );
-  }
+  type CollectionItem = {
+    id: string;
+    title: string;
+    handle: string;
+    image?: { url: string; altText?: string } | null;
+  };
 
-  const collections = data?.collections?.slice(0, 6) || [];
-
-  if (collections.length === 0) {
-    return (
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Shop by Category
-            </h2>
-            <p className="text-gray-600">
-              No categories available at this time.
-            </p>
-          </div>
-        </div>
-      </section>
-    );
-  }
+  const items: CollectionItem[] = useMemo(
+    () =>
+      collections.map((c: any) => ({
+        id: c.id as string,
+        title: c.title as string,
+        handle: c.handle as string,
+        image: c.image || null,
+      })),
+    [collections]
+  );
 
   return (
-    <section className="py-16 bg-white">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Shop by Category
-          </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Explore our curated collection of home decoration categories
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          {collections.map((collection: any) => (
-            <Link
-              key={collection.id}
-              href={`/collections/${collection.handle}`}
-              className="group block"
-            >
-              <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-100 mb-4">
-                {collection.image ? (
-                  <Image
-                    src={collection.image.url}
-                    alt={collection.image.altText || collection.title}
-                    fill
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                    <div className="text-center text-gray-400">
-                      <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2"></div>
-                      <p className="text-sm">No image</p>
-                    </div>
-                  </div>
-                )}
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                  <Button variant="secondary" size="sm">
-                    Shop Collection
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <h3 className="font-semibold text-lg text-gray-900 group-hover:text-primary transition-colors">
-                  {collection.title}
-                </h3>
-                {collection.description && (
-                  <p className="text-sm text-gray-600 line-clamp-2">
-                    {collection.description}
-                  </p>
-                )}
-                <Badge variant="outline" className="text-xs">
-                  {collection.products?.edges?.length || 0} items
-                </Badge>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        <div className="text-center">
-          <Button asChild variant="outline" size="lg">
-            <Link href="/shop">Browse All Categories</Link>
-          </Button>
-        </div>
+    <section className="bg-white">
+      <div className="container mx-auto px-4 relative">
+        <Carousel
+          opts={{ align: "start", dragFree: true, containScroll: "trimSnaps" }}
+          className="w-full"
+        >
+          <CarouselContent className="py-2 flex justify-center items-center">
+            {loading &&
+              [...Array(8)].map((_, i) => (
+                <CarouselItem key={i} className="basis-[140px] pl-16">
+                  <div className="size-28 rounded-full bg-gray-100 animate-pulse mx-auto" />
+                </CarouselItem>
+              ))}
+            {!loading && !error && items.length === 0 && (
+              <p className="text-sm text-gray-500 px-4">No categories</p>
+            )}
+            {!loading &&
+              !error &&
+              items.map((item: CollectionItem) => {
+                const active = activeId === item.id;
+                return (
+                  <CarouselItem key={item.id} className="basis-[140px]">
+                    <Link
+                      href={`/shop?category=${item.handle}`}
+                      onClick={() => setActiveId(item.id)}
+                      className="group flex flex-col items-center focus:outline-none"
+                    >
+                      <div
+                        className={cn(
+                          "relative flex items-center justify-center size-28 rounded-full bg-gray-100 text-sm font-medium transition-all ring-2 ring-transparent select-none",
+                          active &&
+                            "bg-gray-600 text-white ring-gray-600 shadow-md scale-105",
+                          !active &&
+                            "hover:ring-gray-300 hover:shadow-sm hover:scale-[1.03]"
+                        )}
+                      >
+                        {item.image ? (
+                          <Image
+                            src={item.image.url}
+                            alt={item.image.altText || item.title}
+                            width={72}
+                            height={72}
+                            className="object-contain max-h-20 w-auto"
+                          />
+                        ) : (
+                          <span className="text-xs text-gray-500">
+                            No Image
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className={cn(
+                          "mt-3 text-center text-[13px] font-medium text-gray-800 line-clamp-2 leading-snug",
+                          active && "text-gray-700"
+                        )}
+                      >
+                        {item.title}
+                      </span>
+                    </Link>
+                  </CarouselItem>
+                );
+              })}
+          </CarouselContent>
+          <CarouselPrevious className="-left-2 top-1/2 -translate-y-1/2 bg-white border border-gray-200 shadow-md text-gray-700 hover:bg-white" />
+          <CarouselNext className="-right-2 top-1/2 -translate-y-1/2 bg-white border border-gray-200 shadow-md text-gray-700 hover:bg-white" />
+        </Carousel>
       </div>
     </section>
   );

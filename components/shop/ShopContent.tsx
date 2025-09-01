@@ -1,24 +1,58 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   useProducts,
   useCollections,
   useProductSearch,
 } from "@/lib/hooks/useShopify";
 import ProductGrid from "@/components/shop/ProductGrid";
-import CategoryGrid from "@/components/shop/CategoryGrid";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Filter, X } from "lucide-react";
+import { Search, Filter, X, Menu } from "lucide-react";
 
 export default function ShopContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [sortBy, setSortBy] = useState<string>("title");
-  const [showCategories, setShowCategories] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Handle URL parameters on component mount
+  useEffect(() => {
+    const categoryParam = searchParams.get("category");
+    const searchParam = searchParams.get("search");
+    const sortParam = searchParams.get("sort");
+
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    }
+    if (searchParam) {
+      setSearchQuery(searchParam);
+    }
+    if (sortParam) {
+      setSortBy(sortParam);
+    }
+  }, [searchParams]);
+
+  // Update URL when filters change
+  const updateURL = (category: string, search: string, sort: string) => {
+    const params = new URLSearchParams();
+
+    if (category) params.set("category", category);
+    if (search) params.set("search", search);
+    if (sort && sort !== "title") params.set("sort", sort);
+
+    const queryString = params.toString();
+    const newURL = queryString ? `/shop?${queryString}` : "/shop";
+
+    router.push(newURL, { scroll: false });
+  };
 
   // Fetch data
   const {
@@ -40,11 +74,30 @@ export default function ShopContent() {
 
     // Apply category filter
     if (selectedCategory) {
-      filtered = filtered.filter(
-        (product: any) =>
+      filtered = filtered.filter((product: any) => {
+        // Check if the category matches product type (exact match or case insensitive)
+        const productTypeMatch =
           product.productType === selectedCategory ||
-          product.tags?.includes(selectedCategory)
-      );
+          product.productType?.toLowerCase() === selectedCategory.toLowerCase();
+
+        // Check if the category is in product tags
+        const tagMatch = product.tags?.some(
+          (tag: string) => tag.toLowerCase() === selectedCategory.toLowerCase()
+        );
+
+        // Check if the category matches any collection that this product belongs to
+        // Note: We'll also check against collection handles passed from home page
+        const collectionMatch = collections.some((collection: any) => {
+          return (
+            collection.handle === selectedCategory &&
+            collection.products?.edges?.some(
+              (edge: any) => edge.node.id === product.id
+            )
+          );
+        });
+
+        return productTypeMatch || tagMatch || collectionMatch;
+      });
     }
 
     // Apply search filter
@@ -91,24 +144,61 @@ export default function ShopContent() {
     return filtered;
   }, [allProducts, selectedCategory, searchQuery, sortBy]);
 
-  // Get unique categories from products
+  // Get unique categories from products and collections
   const categories = useMemo(() => {
     const categorySet = new Set<string>();
+
+    // Add product types
     allProducts.forEach((product: any) => {
       if (product.productType) categorySet.add(product.productType);
     });
+
+    // Add collection handles and titles
+    collections.forEach((collection: any) => {
+      if (collection.handle) categorySet.add(collection.handle);
+      if (collection.title && collection.title !== collection.handle) {
+        categorySet.add(collection.title);
+      }
+    });
+
     return Array.from(categorySet).sort();
-  }, [allProducts]);
+  }, [allProducts, collections]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     // Search is handled by the useMemo filter above
   };
 
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    updateURL(category, searchQuery, sortBy);
+  };
+
+  const handleSearchChange = (search: string) => {
+    setSearchQuery(search);
+    updateURL(selectedCategory, search, sortBy);
+  };
+
+  const handleSortChange = (sort: string) => {
+    setSortBy(sort);
+    updateURL(selectedCategory, searchQuery, sort);
+  };
+
   const clearFilters = () => {
     setSearchQuery("");
     setSelectedCategory("");
     setSortBy("title");
+    updateURL("", "", "title");
+  };
+
+  const removeSearchFilter = () => {
+    setSearchQuery("");
+    updateURL(selectedCategory, "", sortBy);
+  };
+
+  const removeCategoryFilter = () => {
+    setSelectedCategory("");
+    updateURL("", searchQuery, sortBy);
   };
 
   const isLoading = productsLoading || collectionsLoading || searchLoading;
@@ -117,145 +207,154 @@ export default function ShopContent() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-4">Shop</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Discover our complete collection of home decoration items
           </p>
         </div>
 
-        {/* Categories Toggle */}
-        <div className="flex justify-center mb-8">
-          <div className="flex space-x-2">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Mobile Filter Toggle */}
+          <div className="lg:hidden">
             <Button
-              variant={showCategories ? "default" : "outline"}
-              onClick={() => setShowCategories(true)}
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="w-full mb-4"
             >
-              Categories
+              <Filter className="h-4 w-4 mr-2" />
+              {showFilters ? "Hide Filters" : "Show Filters"}
             </Button>
-            <Button
-              variant={!showCategories ? "default" : "outline"}
-              onClick={() => setShowCategories(false)}
-            >
-              All Products
-            </Button>
+          </div>
+
+          {/* Filters Sidebar */}
+          <div
+            className={`lg:w-1/4 ${showFilters ? "block" : "hidden lg:block"}`}
+          >
+            <Card className="sticky top-4">
+              <CardContent className="p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center">
+                  <Filter className="h-5 w-5 mr-2" />
+                  Filters
+                </h2>
+
+                {/* Search */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-2">
+                    Search
+                  </label>
+                  <form onSubmit={handleSearch} className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      type="text"
+                      placeholder="Search products..."
+                      value={searchQuery}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      className="pl-10"
+                    />
+                  </form>
+                </div>
+
+                {/* Category Filter */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-2">
+                    Category
+                  </label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                    className="w-full p-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">All Categories</option>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Sort */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-2">
+                    Sort by
+                  </label>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => handleSortChange(e.target.value)}
+                    className="w-full p-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="title">Name</option>
+                    <option value="price-low">Price: Low to High</option>
+                    <option value="price-high">Price: High to Low</option>
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                  </select>
+                </div>
+
+                {/* Active Filters */}
+                {(searchQuery || selectedCategory) && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-2">
+                      Active Filters
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {searchQuery && (
+                        <Badge
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
+                          Search: "{searchQuery}"
+                          <X
+                            className="h-3 w-3 cursor-pointer"
+                            onClick={removeSearchFilter}
+                          />
+                        </Badge>
+                      )}
+                      {selectedCategory && (
+                        <Badge
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
+                          Category: {selectedCategory}
+                          <X
+                            className="h-3 w-3 cursor-pointer"
+                            onClick={removeCategoryFilter}
+                          />
+                        </Badge>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearFilters}
+                      className="mt-2 h-8 px-3 text-xs"
+                    >
+                      Clear All Filters
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Products Section */}
+          <div className="lg:w-3/4">
+            {/* Results Count */}
+            <div className="mb-6">
+              <p className="text-muted-foreground">
+                {isLoading
+                  ? "Loading products..."
+                  : `${filteredProducts.length} product${
+                      filteredProducts.length !== 1 ? "s" : ""
+                    } found`}
+              </p>
+            </div>
+
+            {/* Product Grid */}
+            <ProductGrid products={filteredProducts} loading={isLoading} />
           </div>
         </div>
-
-        {/* Show Categories */}
-        {showCategories && (
-          <div className="mb-12">
-            <CategoryGrid />
-          </div>
-        )}
-
-        {/* Filters and Search */}
-        <Card className="mb-8">
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-              {/* Search */}
-              <div className="md:col-span-2">
-                <form onSubmit={handleSearch} className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    type="text"
-                    placeholder="Search products..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </form>
-              </div>
-
-              {/* Category Filter */}
-              <div>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full p-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">All Categories</option>
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <label className="block text-sm font-medium mb-2">Sort by:</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full md:w-auto p-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="title">Name</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-              </select>
-            </div>
-
-            {/* Active Filters */}
-            {(searchQuery || selectedCategory) && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {searchQuery && (
-                  <Badge
-                    variant="secondary"
-                    className="flex items-center gap-1"
-                  >
-                    Search: "{searchQuery}"
-                    <X
-                      className="h-3 w-3 cursor-pointer"
-                      onClick={() => setSearchQuery("")}
-                    />
-                  </Badge>
-                )}
-                {selectedCategory && (
-                  <Badge
-                    variant="secondary"
-                    className="flex items-center gap-1"
-                  >
-                    Category: {selectedCategory}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
-                      onClick={() => setSelectedCategory("")}
-                    />
-                  </Badge>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="h-6 px-2 text-xs"
-                >
-                  Clear All
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Results */}
-        {!showCategories && (
-          <div className="mb-6">
-            <p className="text-muted-foreground">
-              {isLoading
-                ? "Loading products..."
-                : `${filteredProducts.length} product${
-                    filteredProducts.length !== 1 ? "s" : ""
-                  } found`}
-            </p>
-          </div>
-        )}
-
-        {/* Product Grid */}
-        {!showCategories && (
-          <ProductGrid products={filteredProducts} loading={isLoading} />
-        )}
       </div>
     </div>
   );
