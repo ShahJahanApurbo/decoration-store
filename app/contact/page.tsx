@@ -6,6 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import WhatsAppButton, { WhatsAppContact } from "@/components/WhatsAppButton";
+import SwiperComponent from "@/components/ui/swiper-component";
 import { MessageCircle, Phone, Clock, CheckCircle } from "lucide-react";
 import { whatsappConfig } from "@/lib/whatsapp-config";
 
@@ -131,7 +132,9 @@ export default function ContactPage() {
           <h2 className="text-3xl font-bold text-center mb-8">
             Why Buy via WhatsApp?
           </h2>
-          <div className="grid gap-6 md:grid-cols-3 max-w-6xl mx-auto">
+
+          {/* Desktop Grid */}
+          <div className="hidden md:grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             <Card className="text-center">
               <CardContent className="pt-6">
                 <div className="mx-auto mb-4 p-3 bg-blue-100 rounded-full w-fit">
@@ -167,6 +170,55 @@ export default function ContactPage() {
                 </p>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Mobile Swiper */}
+          <div className="max-w-6xl mx-auto">
+            <SwiperComponent
+              breakpoints={{
+                640: {
+                  slidesPerView: 2,
+                  spaceBetween: 20,
+                },
+              }}
+            >
+              <Card className="text-center">
+                <CardContent className="pt-6">
+                  <div className="mx-auto mb-4 p-3 bg-blue-100 rounded-full w-fit">
+                    <MessageCircle className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <h3 className="font-semibold mb-2">Instant Communication</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Get immediate responses to your questions and concerns
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="text-center">
+                <CardContent className="pt-6">
+                  <div className="mx-auto mb-4 p-3 bg-purple-100 rounded-full w-fit">
+                    <CheckCircle className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <h3 className="font-semibold mb-2">Personalized Service</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Receive tailored recommendations based on your specific
+                    needs
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="text-center">
+                <CardContent className="pt-6">
+                  <div className="mx-auto mb-4 p-3 bg-green-100 rounded-full w-fit">
+                    <Phone className="h-6 w-6 text-green-600" />
+                  </div>
+                  <h3 className="font-semibold mb-2">Easy & Secure</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Simple ordering process with secure payment options
+                  </p>
+                </CardContent>
+              </Card>
+            </SwiperComponent>
           </div>
         </div>
       </div>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import HeroCarousel from "@/components/home/HeroCarousel";
 import CategorySection from "@/components/home/CategorySection";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
