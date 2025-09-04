@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/layout/Navbar";
+import SecondaryNavbar from "@/components/layout/SecondaryNavbar";
 import Footer from "@/components/layout/Footer";
 import HydrogenProvider from "@/lib/hydrogen-provider";
 import "./globals.css";
@@ -34,6 +35,7 @@ export default function RootLayout({
         <HydrogenProvider>
           <div className="min-h-screen flex flex-col">
             <Navbar />
+            <SecondaryNavbar />
             <main className="flex-1">{children}</main>
             <Footer />
           </div>
