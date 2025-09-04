@@ -1,9 +1,15 @@
 "use client";
 import * as React from "react";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
 import { Swiper, SwiperSlide } from "swiper/react";
+import type { Swiper as SwiperType } from "swiper";
 import { Navigation, Pagination, Autoplay, EffectFade } from "swiper/modules";
+import { CarouselSlide } from "@/components/carousel/CarouselSlide";
+import { CarouselNavButton } from "@/components/carousel/CarouselNavButton";
+import { CarouselErrorBoundary } from "@/components/carousel/CarouselErrorBoundary";
+import { CAROUSEL_CONFIG } from "@/constants/carousel";
+import type { CarouselProps } from "@/types/carousel";
+import { defaultSlides } from "@/data/slides";
+import styles from "./HeroCarousel.module.css";
 
 // Import Swiper styles
 import "swiper/css";
@@ -11,165 +17,77 @@ import "swiper/css/navigation";
 import "swiper/css/pagination";
 import "swiper/css/effect-fade";
 
-interface Slide {
-  id: number;
-  title: string;
-  subtitle?: string;
-  cta?: string;
-  image: string;
-  accent?: string;
-}
+const HeroCarousel: React.FC<CarouselProps> = ({
+  slides = defaultSlides,
+  autoplayDelay = CAROUSEL_CONFIG.AUTOPLAY_DELAY,
+  className = "",
+}) => {
+  const handleSwiperInit = React.useCallback(
+    (swiper: SwiperType) => {
+      const paginationEl = swiper.el.querySelector(`.${styles.pagination}`);
+      if (paginationEl) {
+        (paginationEl as HTMLElement).style.setProperty(
+          "--hero-delay",
+          `${autoplayDelay}ms`
+        );
+      }
+    },
+    [autoplayDelay]
+  );
 
-const slides: Slide[] = [
-  {
-    id: 1,
-    title: "Elevate Every Corner",
-    subtitle: "Premium Carpets For Cozy Living",
-    cta: "Shop Carpets",
-    image:
-      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=80",
-    accent: "#b45309",
-  },
-  {
-    id: 2,
-    title: "Green That Never Fades",
-    subtitle: "Artificial Plants • Zero Maintenance",
-    cta: "Browse Plants",
-    image:
-      "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1600&q=80",
-    accent: "#047857",
-  },
-  {
-    id: 3,
-    title: "Reflect Your Style",
-    subtitle: "Modern Mirrors & Ambient Lamps",
-    cta: "Find Your Glow",
-    image:
-      "https://images.unsplash.com/photo-1615873968403-89e068629265?auto=format&fit=crop&w=1600&q=80",
-    accent: "#4f46e5",
-  },
-];
+  const renderPaginationBullet = React.useCallback(
+    (_index: number, className: string) => {
+      return `<span class="${className}"><span class='${styles.progressBar}'></span></span>`;
+    },
+    []
+  );
 
-export default function HeroCarousel() {
   return (
-    <div className="w-full">
+    <div className={`w-full h-[500px] md:h-[600px] ${className}`}>
       <Swiper
         modules={[Navigation, Pagination, Autoplay, EffectFade]}
         spaceBetween={0}
         slidesPerView={1}
-        loop={true}
+        loop
         autoplay={{
-          delay: 5000,
+          delay: autoplayDelay,
           disableOnInteraction: false,
           pauseOnMouseEnter: true,
         }}
-        speed={800}
+        speed={CAROUSEL_CONFIG.TRANSITION_SPEED}
         effect="fade"
-        fadeEffect={{
-          crossFade: true,
-        }}
+        fadeEffect={{ crossFade: true }}
         pagination={{
+          el: `.${styles.pagination}`,
           clickable: true,
-          bulletClass: "swiper-pagination-bullet",
-          bulletActiveClass: "swiper-pagination-bullet-active",
+          renderBullet: renderPaginationBullet,
         }}
         navigation={{
           nextEl: ".hero-carousel-next",
           prevEl: ".hero-carousel-prev",
         }}
-        className="w-full h-[420px] md:h-[520px] rounded-xl overflow-hidden"
+        onInit={handleSwiperInit}
+        className="relative w-full rounded-2xl overflow-hidden shadow-lg"
       >
-        {slides.map((slide) => (
+        {slides.map((slide, index) => (
           <SwiperSlide key={slide.id}>
-            <div className="relative w-full h-full bg-neutral-900 text-white">
-              <Image
-                src={slide.image}
-                alt={slide.title}
-                fill
-                priority
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-black/50" />
-              <div className="relative z-10 max-w-2xl px-8 md:px-16 py-12 md:py-20 flex flex-col gap-4 h-full justify-center">
-                <p
-                  className="text-sm font-medium tracking-wide opacity-90"
-                  style={{ color: slide.accent }}
-                >
-                  {slide.subtitle}
-                </p>
-                <h2 className="text-3xl md:text-5xl font-bold leading-tight">
-                  {slide.title}
-                </h2>
-                {slide.cta && (
-                  <Button
-                    className="mt-2 w-fit bg-white text-neutral-900 hover:bg-neutral-100"
-                    size="lg"
-                  >
-                    {slide.cta} →
-                  </Button>
-                )}
-              </div>
-            </div>
+            <CarouselSlide slide={slide} priority={index === 0} />
           </SwiperSlide>
         ))}
-
-        {/* Custom Navigation Buttons */}
-        <div className="hero-carousel-prev absolute left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 backdrop-blur-sm">
-          <svg
-            className="w-5 h-5 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-        </div>
-
-        <div className="hero-carousel-next absolute right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 backdrop-blur-sm">
-          <svg
-            className="w-5 h-5 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
+        <div className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4 md:gap-6">
+          <CarouselNavButton direction="prev" className="hero-carousel-prev" />
+          <div className={`${styles.pagination} flex items-center`} />
+          <CarouselNavButton direction="next" className="hero-carousel-next" />
         </div>
       </Swiper>
-
-      <style jsx global>{`
-        .swiper-pagination {
-          bottom: 20px !important;
-        }
-
-        .swiper-pagination-bullet {
-          width: 12px;
-          height: 12px;
-          background: rgba(255, 255, 255, 0.5);
-          opacity: 1;
-          margin: 0 6px;
-          transition: all 0.3s ease;
-        }
-
-        .swiper-pagination-bullet-active {
-          background: white;
-          transform: scale(1.2);
-        }
-
-        .swiper-pagination-bullet:hover {
-          background: rgba(255, 255, 255, 0.8);
-        }
-      `}</style>
     </div>
+  );
+};
+
+export default function HeroCarouselWithBoundary(props: CarouselProps) {
+  return (
+    <CarouselErrorBoundary>
+      <HeroCarousel {...props} />
+    </CarouselErrorBoundary>
   );
 }

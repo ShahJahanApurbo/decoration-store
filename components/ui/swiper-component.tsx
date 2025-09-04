@@ -3,6 +3,7 @@
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination, Autoplay } from "swiper/modules";
 import { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 // Import Swiper styles
 import "swiper/css";
@@ -39,10 +40,8 @@ export default function SwiperComponent({
   className = "",
   showOnMobile = true,
 }: SwiperComponentProps) {
-  const wrapperClass = showOnMobile ? "md:hidden" : "";
-
   return (
-    <div className={wrapperClass}>
+    <div className={cn(showOnMobile ? "md:hidden" : "", className)}>
       <Swiper
         modules={[Pagination, Autoplay]}
         spaceBetween={spaceBetween}
@@ -57,7 +56,7 @@ export default function SwiperComponent({
         }
         autoplay={autoplay}
         breakpoints={breakpoints}
-        className={`custom-swiper ${className}`}
+        className={cn("custom-swiper")}
       >
         {children.map((child, index) => (
           <SwiperSlide key={index}>
