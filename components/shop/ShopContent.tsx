@@ -23,6 +23,19 @@ export default function ShopContent() {
   const [sortBy, setSortBy] = useState<string>("title");
   const [showFilters, setShowFilters] = useState(false);
 
+  // Helper function to normalize category names
+  const normalizeCategory = (categoryName: string): string => {
+    return categoryName
+      .toLowerCase()
+      .split(" ")
+      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
+      .replace(/-/g, " ")
+      .split(" ")
+      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
   // Handle URL parameters on component mount
   useEffect(() => {
     const categoryParam = searchParams.get("category");
@@ -75,24 +88,39 @@ export default function ShopContent() {
     // Apply category filter
     if (selectedCategory) {
       filtered = filtered.filter((product: any) => {
-        // Check if the category matches product type (exact match or case insensitive)
+        const selectedCategoryLower = selectedCategory.toLowerCase();
+
+        // Check if the category matches product type (case insensitive)
         const productTypeMatch =
-          product.productType === selectedCategory ||
-          product.productType?.toLowerCase() === selectedCategory.toLowerCase();
+          product.productType?.toLowerCase() === selectedCategoryLower;
 
         // Check if the category is in product tags
         const tagMatch = product.tags?.some(
-          (tag: string) => tag.toLowerCase() === selectedCategory.toLowerCase()
+          (tag: string) => tag.toLowerCase() === selectedCategoryLower
         );
 
         // Check if the category matches any collection that this product belongs to
-        // Note: We'll also check against collection handles passed from home page
         const collectionMatch = collections.some((collection: any) => {
-          return (
-            collection.handle === selectedCategory &&
-            collection.products?.edges?.some(
+          if (
+            !collection.products?.edges?.some(
               (edge: any) => edge.node.id === product.id
             )
+          ) {
+            return false;
+          }
+
+          const collectionTitle = collection.title?.toLowerCase();
+          const collectionHandle = collection.handle?.toLowerCase();
+
+          // Also check normalized version
+          const normalizedCollection = normalizeCategory(
+            collection.title || collection.handle || ""
+          ).toLowerCase();
+
+          return (
+            collectionTitle === selectedCategoryLower ||
+            collectionHandle === selectedCategoryLower ||
+            normalizedCollection === selectedCategoryLower
           );
         });
 
@@ -142,7 +170,7 @@ export default function ShopContent() {
     });
 
     return filtered;
-  }, [allProducts, selectedCategory, searchQuery, sortBy]);
+  }, [allProducts, selectedCategory, searchQuery, sortBy, collections]);
 
   // Get unique categories from products and collections
   const categories = useMemo(() => {
@@ -153,11 +181,13 @@ export default function ShopContent() {
       if (product.productType) categorySet.add(product.productType);
     });
 
-    // Add collection handles and titles
+    // Add collection titles (prefer titles over handles for better display)
     collections.forEach((collection: any) => {
-      if (collection.handle) categorySet.add(collection.handle);
-      if (collection.title && collection.title !== collection.handle) {
-        categorySet.add(collection.title);
+      // Use title if available, otherwise use handle
+      const categoryName = collection.title || collection.handle;
+      if (categoryName) {
+        const normalizedName = normalizeCategory(categoryName);
+        categorySet.add(normalizedName);
       }
     });
 
@@ -302,25 +332,33 @@ export default function ShopContent() {
                       {searchQuery && (
                         <Badge
                           variant="secondary"
-                          className="flex items-center gap-1"
+                          className="flex items-center gap-1 pr-1"
                         >
-                          Search: "{searchQuery}"
-                          <X
-                            className="h-3 w-3 cursor-pointer"
+                          <span>Search: "{searchQuery}"</span>
+                          <button
+                            type="button"
+                            className="p-1 rounded-full hover:bg-destructive/20 hover:text-destructive transition-colors"
                             onClick={removeSearchFilter}
-                          />
+                            aria-label="Remove search filter"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
                         </Badge>
                       )}
                       {selectedCategory && (
                         <Badge
                           variant="secondary"
-                          className="flex items-center gap-1"
+                          className="flex items-center gap-1 pr-1"
                         >
-                          Category: {selectedCategory}
-                          <X
-                            className="h-3 w-3 cursor-pointer"
+                          <span>Category: {selectedCategory}</span>
+                          <button
+                            type="button"
+                            className="p-1 rounded-full hover:bg-destructive/20 hover:text-destructive transition-colors"
                             onClick={removeCategoryFilter}
-                          />
+                            aria-label="Remove category filter"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
                         </Badge>
                       )}
                     </div>
