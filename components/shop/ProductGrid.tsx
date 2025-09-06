@@ -23,27 +23,44 @@ const LoadingSkeleton = ({
   variant?: "default" | "compact" | "featured";
 }) => {
   const skeletonVariants = {
-    default: "aspect-square",
-    compact: "aspect-[4/3]",
-    featured: "aspect-[3/4]",
+    default: "aspect-square rounded-t-2xl",
+    compact: "aspect-[4/3] rounded-t-xl",
+    featured: "aspect-[3/4] rounded-t-3xl",
+  };
+
+  const cardVariants = {
+    default: "rounded-2xl",
+    compact: "rounded-xl",
+    featured: "rounded-3xl",
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-white shadow-sm border border-gray-100/50 animate-pulse">
-      <div className={cn("bg-gray-200", skeletonVariants[variant])}></div>
-      <div className="p-4 space-y-3">
-        <div className="h-3 bg-gray-200 rounded w-1/4"></div>
-        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+    <div
+      className={cn(
+        "overflow-hidden bg-card shadow-sm border border-border/50 animate-pulse h-full flex flex-col",
+        cardVariants[variant]
+      )}
+    >
+      <div
+        className={cn("bg-muted/50 flex-shrink-0", skeletonVariants[variant])}
+      ></div>
+      <div className="p-4 space-y-3 flex-grow">
+        <div className="h-3 bg-muted/50 rounded w-1/4"></div>
+        <div className="h-4 bg-muted/50 rounded w-3/4"></div>
+        <div className="h-3 bg-muted/50 rounded w-1/2"></div>
+        <div className="flex items-center gap-1 mb-2">
+          <div className="h-3 w-3 bg-muted/50 rounded"></div>
+          <div className="h-3 bg-muted/50 rounded w-16"></div>
+        </div>
         <div className="flex items-center gap-1">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-3 w-3 bg-gray-200 rounded"></div>
+            <div key={i} className="h-3 w-3 bg-muted/50 rounded"></div>
           ))}
         </div>
-        <div className="h-5 bg-gray-200 rounded w-1/3"></div>
-        <div className="flex gap-2">
-          <div className="h-8 bg-gray-200 rounded flex-1"></div>
-          <div className="h-8 w-8 bg-gray-200 rounded"></div>
+        <div className="h-5 bg-muted/50 rounded w-1/3"></div>
+        <div className="flex gap-2 mt-auto">
+          <div className="h-9 bg-muted/50 rounded flex-1"></div>
+          <div className="h-9 w-9 bg-muted/50 rounded"></div>
         </div>
       </div>
     </div>
@@ -57,7 +74,7 @@ export default function ProductGrid({
   columns = {
     mobile: 1,
     tablet: 2,
-    desktop: 4,
+    desktop: 3,
   },
   showQuickView = true,
   loading = false,
@@ -99,9 +116,9 @@ export default function ProductGrid({
     return (
       <div className="text-center py-16">
         <div className="max-w-md mx-auto">
-          <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+          <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-muted/30 flex items-center justify-center">
             <svg
-              className="w-12 h-12 text-gray-400"
+              className="w-12 h-12 text-muted-foreground"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -114,10 +131,10 @@ export default function ProductGrid({
               />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <h3 className="text-lg font-semibold text-foreground mb-2">
             No products found
           </h3>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             We couldn't find any products matching your criteria. Try adjusting
             your filters or search terms.
           </p>
