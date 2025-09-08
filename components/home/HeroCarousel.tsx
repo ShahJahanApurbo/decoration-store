@@ -22,8 +22,13 @@ const HeroCarousel: React.FC<CarouselProps> = ({
   autoplayDelay = CAROUSEL_CONFIG.AUTOPLAY_DELAY,
   className = "",
 }) => {
+  const [swiperInstance, setSwiperInstance] = React.useState<SwiperType | null>(
+    null
+  );
+
   const handleSwiperInit = React.useCallback(
     (swiper: SwiperType) => {
+      setSwiperInstance(swiper);
       const paginationEl = swiper.el.querySelector(`.${styles.pagination}`);
       if (paginationEl) {
         (paginationEl as HTMLElement).style.setProperty(
@@ -34,6 +39,28 @@ const HeroCarousel: React.FC<CarouselProps> = ({
     },
     [autoplayDelay]
   );
+
+  const handleSlideChange = React.useCallback((swiper: SwiperType) => {
+    // Reset all progress bars
+    const bullets = swiper.el.querySelectorAll(`.${styles.progressBar}`);
+    bullets.forEach((bullet) => {
+      (bullet as HTMLElement).style.width = "0%";
+    });
+
+    // Ensure autoplay continues if it was paused
+    if (!swiper.autoplay.running) {
+      swiper.autoplay.start();
+    }
+  }, []);
+
+  const handleAutoplayStop = React.useCallback((swiper: SwiperType) => {
+    // Restart autoplay after a brief delay to prevent getting stuck
+    setTimeout(() => {
+      if (swiper.autoplay && !swiper.destroyed) {
+        swiper.autoplay.start();
+      }
+    }, 100);
+  }, []);
 
   const renderPaginationBullet = React.useCallback(
     (_index: number, className: string) => {
@@ -53,6 +80,7 @@ const HeroCarousel: React.FC<CarouselProps> = ({
           delay: autoplayDelay,
           disableOnInteraction: false,
           pauseOnMouseEnter: true,
+          waitForTransition: false,
         }}
         speed={CAROUSEL_CONFIG.TRANSITION_SPEED}
         effect="fade"
@@ -67,6 +95,17 @@ const HeroCarousel: React.FC<CarouselProps> = ({
           prevEl: ".hero-carousel-prev",
         }}
         onInit={handleSwiperInit}
+        onSlideChange={handleSlideChange}
+        onAutoplayStop={handleAutoplayStop}
+        onAutoplayTimeLeft={(swiper, time, progress) => {
+          // Update progress bar animation in real-time
+          const activeBullet = swiper.el.querySelector(
+            `.swiper-pagination-bullet-active .${styles.progressBar}`
+          ) as HTMLElement;
+          if (activeBullet) {
+            activeBullet.style.width = `${(1 - progress) * 100}%`;
+          }
+        }}
         className="relative w-full rounded-2xl overflow-hidden shadow-lg"
       >
         {slides.map((slide, index) => (

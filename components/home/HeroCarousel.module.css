@@ -10,6 +10,7 @@
   overflow: hidden;
   display: inline-flex;
   align-items: center;
+  cursor: pointer;
 }
 
 .progressBar {
@@ -18,6 +19,7 @@
   width: 0%;
   background: #fff;
   border-radius: inherit;
+  transition: width 0.1s ease-out;
 }
 
 .pagination :global(.swiper-pagination-bullet-active) {
@@ -27,10 +29,20 @@
 }
 
 .pagination :global(.swiper-pagination-bullet-active) .progressBar {
+  width: 100%;
+  animation: none; /* Remove CSS animation, use JS control instead */
+}
+
+/* Fallback animation for when JS control isn't working */
+.pagination :global(.swiper-pagination-bullet-active.animate-progress) .progressBar {
   animation: bulletProgress var(--hero-delay, 6000ms) linear forwards;
 }
 
 @keyframes bulletProgress {
-  from { width: 0%; }
-  to { width: 100%; }
+  from { 
+    width: 0%; 
+  }
+  to { 
+    width: 100%; 
+  }
 }
